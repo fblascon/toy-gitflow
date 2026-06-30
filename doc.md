@@ -203,22 +203,72 @@ En Git Flow clásico, una `release/<version>` se crea desde `main` (o `develop`)
 
 Una vez lista, se mergea a `main` **y se taguea**.
 
-### Cambios
+### ¿Por qué necesito hacer `git pull` si ya está mergeado en GitHub?
 
-1. **`src/index.html`** — actualizar año del footer al actual
-2. **`README.md`** — añadir sección de versionado y enlace a la release
-3. **`CHANGELOG.md`** (nuevo) — registrar cambios de la v1.0.0
+El merge se hizo en GitHub (web), no en tu máquina. Tu local y el remoto están desincronizados:
+
+```
+Local (antes del pull):   A---B---C (main)
+Remote (GitHub):          A---B---C---D (main, con merge commit)
+```
+
+- `git pull origin main` descarga el commit `D` a tu local.
+- `git tag v1.0.0` crea un alias apuntando al commit `D`.
+- `git push origin v1.0.0` sube ese tag a GitHub.
+
+### Diferencia entre tag y release
+
+| Concepto | Qué es | Dónde vive |
+|----------|--------|-----------|
+| **Tag** | alias inmutable a un commit | Git (local + remoto) |
+| **Release** | tag + notas de versión + assets | GitHub (UI web) |
+
+Un tag es solo un marcador en Git. Una release es la interfaz de GitHub alrededor de ese tag: puedes añadir changelog, adjuntar binarios, y notificar a los usuarios.
+
+### Tabla comparativa de ramas
+
+| Aspecto | Feature | Hotfix | Release |
+|---------|---------|--------|---------|
+| Origen | `main` | `main` | `main` |
+| Propósito | Nueva funcionalidad | Parche crítico | Preparar versión |
+| Versionado | Minor bump | Patch bump | Major/Minor bump |
+| Contenido | Código nuevo | Bug fix | Changelog + versión |
+| Post-merge | Nada | Tag patch | Tag release |
+
+### Cambios realizados
+
+1. **`CHANGELOG.md`** (nuevo) — documento que registra todos los cambios agrupados por versión. Estándar en cualquier proyecto.
 
 ### Pasos
 
 ```bash
+# 1. Crear release branch desde main
 git checkout main && git pull origin main
 git checkout -b release/v1.0.0
+
+# 2. Crear CHANGELOG.md
+#    (ver contenido más abajo)
+
+# 3. Commit y push
+git add -A
+git commit -m "chore: prepare release v1.0.0"
+git push -u origin release/v1.0.0
+
+# 4. PR en GitHub: release/v1.0.0 → main
+#    Title: "release v1.0.0"
+#    Review → Approved → Merge
+
+# 5. Sincronizar local y taguear
+git checkout main && git pull origin main
+git tag v1.0.0
+git push origin v1.0.0
+
+# 6. Limpieza
+git branch -d release/v1.0.0
+git push origin --delete release/v1.0.0
 ```
 
-Editar `src/index.html`: cambiar `&copy; 2026` por `&copy; 2026` (se queda igual, o se puede cambiar dinámicamente).
-
-**Crear `CHANGELOG.md`:**
+**CHANGELOG.md creado:**
 
 ```markdown
 # Changelog
@@ -235,31 +285,201 @@ Editar `src/index.html`: cambiar `&copy; 2026` por `&copy; 2026` (se queda igual
 - Atributos faltantes en formulario de contacto (action, method, name, required)
 ```
 
-**Commit y push:**
+**Publicar release en GitHub:**
+1. GitHub → repo → **Releases** → **Create a new release**
+2. Elegir tag: `v1.0.0`
+3. Title: `v1.0.0`
+4. Description: pegar contenido del CHANGELOG
+5. **Publish release**
 
-```bash
-git add -A
-git commit -m "chore: prepare release v1.0.0"
-git push -u origin release/v1.0.0
+---
+
+## Ejercicio 5 — Revert (deshacer un merge)
+
+**Objetivo:** Simular un merge que introduce un bug crítico en producción y deshacerlo con `git revert`.
+
+**Escenario:** Se mergea una feature que rompe la página (CSS oculta todo). Hay que deshacerlo rápido sin borrar historial.
+
+---
+
+### ¿Por qué `revert` y no `reset`?
+
+| Comando | Efecto | Cuándo usarlo |
+|---------|--------|---------------|
+| `git reset --hard <commit>` | Borra commits del historial | Solo en ramas **locales** sin compartir |
+| `git revert <commit>` | Crea un nuevo commit que deshace los cambios | En ramas **compartidas** como `main` |
+
+`reset` reescribe la historia (peligroso si otros ya tienen ese commit). `revert` es seguro: añade un commit nuevo que invierte los cambios, manteniendo el registro.
+
+### Revertir un merge commit
+
+Cuando un merge tiene 2 padres (main + feature), hay que decirle a git qué lado mantener:
+
+```
+A (main antes) --- M (merge commit) --- R (revert commit)
+                    |\
+                    B (feature)
 ```
 
-**PR en GitHub:**
-- Title: `release v1.0.0`
-- Base: `main` ← compare: `release/v1.0.0`
-- Review → Approved ✅
-- Merge Pull Request
+`git revert -m 1 M` significa:
+- `-m 1` → "quédate con el primer padre (main)" → descarta los cambios de la feature
+- El commit `R` contiene el mismo código que `A`, pero el historial conserva `M`
 
-**Post-merge (local):**
+### Ramas creadas
+
+| Rama | Contenido | Acción |
+|------|-----------|--------|
+| `feature/buggy-widget` | Añade `body { display: none !important; }` en CSS | Merge a main (bug!) |
+| `hotfix/revert-buggy` | Revierte el merge anterior | Restaura la página |
+
+### Pasos ejecutados
+
+```bash
+# Fase 1 — Crear el bug
+git checkout main && git pull origin main
+git checkout -b feature/buggy-widget
+# añadir body { display: none !important; } a src/css/style.css
+git add -A && git commit -m "feat: add widget section"
+git push -u origin feature/buggy-widget
+# PR → Approve → Merge
+
+# Fase 2 — Revertir
+git checkout main && git pull origin main
+git log --oneline -5            # identificar hash del merge commit
+git checkout -b hotfix/revert-buggy
+git revert -m 1 <hash> --no-edit
+git push -u origin hotfix/revert-buggy
+# PR → Approve → Merge
+
+# Fase 3 — Limpieza
+git checkout main && git pull origin main
+git branch -d feature/buggy-widget hotfix/revert-buggy
+git push origin --delete feature/buggy-widget hotfix/revert-buggy
+```
+
+### Resultado ✅
+
+- El historial de `main` muestra el merge del bug **y** el revert.
+- El código final es el mismo que antes del merge.
+- Si en el futuro se quisiera reintroducir esa feature, habría que revertir el revert primero.
+
+---
+
+## Ejercicio 6 — Cherry-pick
+
+**Objetivo:** Llevar un commit específico de una rama a otra sin mergear todo el historial.
+
+**Escenario:** Se mergeó un fix a `main` (un meta description para SEO), pero la rama `feature/analytics` se creó antes de ese fix. En vez de mergear `main` entera (que traería otros cambios), hacemos cherry-pick del fix.
+
+---
+
+### ¿Qué es cherry-pick?
+
+`git cherry-pick <hash>` toma **un commit específico** de cualquier rama y lo aplica como un commit nuevo en la rama actual. Es como "copiar y pegar" un cambio concreto.
+
+### Diagrama
+
+```
+main:        A---B---C (fix SEO)
+                    \
+feature/analytics:   D---E (sin el fix)
+                        \
+cherry-pick:             E' (copia de C, mismo cambio)
+```
+
+El commit `C` se copia como `E'` en la feature. `A`, `B`, `D`, `E` no se ven afectados.
+
+---
+
+### Pasos
+
+#### 1. Crear un fix en `main`
 
 ```bash
 git checkout main && git pull origin main
-git tag v1.0.0
-git push origin v1.0.0
-git branch -d release/v1.0.0
-git push origin --delete release/v1.0.0
+git checkout -b fix/seo-description
 ```
 
-**En GitHub:** Ir a Releases → Create a new release → elegir tag `v1.0.0` → escribir notas → Publish release.
+Añadir en `<head>` de `src/index.html`:
+
+```html
+<meta name="description" content="Landing page del equipo Team Toy" />
+```
+
+```bash
+git add -A && git commit -m "fix: add meta description for SEO"
+git push -u origin fix/seo-description
+```
+
+PR: base `main` ← `fix/seo-description` → Approve → Merge
+
+#### 2. Volver a main y guardar el hash
+
+```bash
+git checkout main && git pull origin main
+git log --oneline -3
+```
+
+Anota el hash del commit `fix: add meta description for SEO` (será algo como `a1b2c3d`).
+
+#### 3. Crear feature branch desde el commit anterior
+
+```bash
+git checkout -b feature/analytics
+```
+
+Añadir al final de `<body>` en `src/index.html`:
+
+```html
+<!-- Google Analytics placeholder -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXX"></script>
+```
+
+```bash
+git add -A && git commit -m "feat: add analytics snippet"
+git push -u origin feature/analytics
+```
+
+#### 4. Cherry-pick el fix SEO
+
+```bash
+git cherry-pick <hash-del-fix-seo>
+```
+
+Si no hay conflictos, se aplica automáticamente. Verifica:
+
+```bash
+git log --oneline -5
+```
+
+Verás el commit cherry-pickeado al final. Push:
+
+```bash
+git push origin feature/analytics
+```
+
+#### 5. PR y merge (opcional)
+
+PR: base `main` ← `feature/analytics` → Approve → Merge
+
+Limpieza:
+
+```bash
+git checkout main && git pull origin main
+git branch -d fix/seo-description feature/analytics
+git push origin --delete fix/seo-description feature/analytics
+```
+
+---
+
+### ¿Cuándo se usa cherry-pick en la vida real?
+
+| Situación | Por qué cherry-pick |
+|-----------|-------------------|
+| Un hotfix en `main` que también necesita una feature branch | En vez de mergear todo `main`, solo el fix |
+| Recuperar un commit borrado accidentalmente | Cherry-pick desde el reflog |
+| Llevar un cambio específico a una release branch anterior | Sin tener que mergear features nuevas |
+| Backport de fixes a versiones anteriores (LTS) | Cherry-pick commit por commit |
 
 ---
 
