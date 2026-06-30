@@ -193,91 +193,32 @@ git push origin --delete hotfix/contact-form
 
 **Rama:** `release/v1.0.0`
 
----
-
 ### ¿Qué es una release branch?
 
-Cuando el equipo termina un conjunto de features y toca publicar, se crea una `release/<version>` desde `main`. En esta rama **solo** se hacen ajustes menores de cara a la publicación:
+En Git Flow clásico, una `release/<version>` se crea desde `main` (o `develop`) cuando se acerca una publicación. En ella **no se añaden features nuevos**, solo:
+- Bump de versión en archivos
+- Ajustes de documentación
+- Bug fixes menores
+- CHANGELOG
 
-- Bump de versión
-- CHANGELOG / release notes
-- Bug fixes menores (no features nuevas)
+Una vez lista, se mergea a `main` **y se taguea**.
 
-Una vez aprobada, se mergea a `main` y se marca con un tag. Así queda trazabilidad de qué código corresponde a qué versión.
+### Cambios
 
-### ¿Por qué necesito hacer `git pull` si ya está mergeado en GitHub?
+1. **`src/index.html`** — actualizar año del footer al actual
+2. **`README.md`** — añadir sección de versionado y enlace a la release
+3. **`CHANGELOG.md`** (nuevo) — registrar cambios de la v1.0.0
 
-El merge se hizo en GitHub (web), no en tu máquina. Tu repositorio local y el remoto están **desincronizados**:
-
-```
-Local (antes del pull):   A---B---C (main)
-Remote (GitHub):          A---B---C---D (main, con merge commit)
-```
-
-- `git pull origin main` descarga el commit `D` a tu local.
-- `git tag v1.0.0` crea un alias apuntando al commit `D` en tu local.
-- `git push origin v1.0.0` sube ese tag a GitHub.
-
-Sin este paso, el tag solo existiría en tu máquina y nadie más lo vería.
-
-### ¿Qué diferencia hay entre tag y release?
-
-| Concepto | Qué es | Dónde vive |
-|----------|--------|-----------|
-| **Tag** | alias inmutable a un commit | Git (local + remoto) |
-| **Release** | tag + notas de versión + assets | GitHub (UI web) |
-
-Un tag es solo un marcador en Git. Una release es la interfaz de GitHub alrededor de ese tag: puedes añadir changelog, adjuntar binarios, y notificar a los usuarios.
-
----
-
-### Tabla comparativa de ramas
-
-| Aspecto | Feature | Hotfix | Release |
-|---------|---------|--------|---------|
-| Origen | `main` | `main` | `main` |
-| Propósito | Nueva funcionalidad | Parche crítico | Preparar versión |
-| Versionado | Minor bump | Patch bump | Major/Minor bump |
-| Contenido | Código nuevo | Bug fix | Changelog + versión |
-| Post-merge | Nada | Tag patch | Tag release |
-
----
-
-### Cambios realizados
-
-1. **`CHANGELOG.md`** (nuevo) — documento que registra todos los cambios agrupados por versión. Estándar en cualquier proyecto open-source.
-2. El resto del código no se tocó: la release branch solo añade metadata de la versión.
-
-### Flujo completo
+### Pasos
 
 ```bash
-# 1. Crear release branch desde main
 git checkout main && git pull origin main
 git checkout -b release/v1.0.0
-
-# 2. Crear CHANGELOG.md con los cambios de esta versión
-#    (ver contenido más abajo)
-
-# 3. Commit y push
-git add -A
-git commit -m "chore: prepare release v1.0.0"
-git push -u origin release/v1.0.0
-
-# 4. PR en GitHub: release/v1.0.0 → main
-#    Title: "release v1.0.0"
-#    Review → Approved → Merge
-
-# 5. Sincronizar local y taguear
-git checkout main && git pull origin main   # trae el merge commit
-git tag v1.0.0                               # marca la versión
-git push origin v1.0.0                       # publica el tag
-
-# 6. Limpieza
-git branch -d release/v1.0.0
-git push origin --delete release/v1.0.0
 ```
 
-**CHANGELOG.md creado:**
+Editar `src/index.html`: cambiar `&copy; 2026` por `&copy; 2026` (se queda igual, o se puede cambiar dinámicamente).
+
+**Crear `CHANGELOG.md`:**
 
 ```markdown
 # Changelog
@@ -294,149 +235,31 @@ git push origin --delete release/v1.0.0
 - Atributos faltantes en formulario de contacto (action, method, name, required)
 ```
 
-### Publicar release en GitHub
+**Commit y push:**
 
-1. Ir a GitHub → repo → **Releases** → **Create a new release**
-2. Elegir tag: `v1.0.0`
-3. Title: `v1.0.0`
-4. Description (release notes): copiar contenido del CHANGELOG
-5. **Publish release**
-
-Esto genera una página pública con las notas de la versión, visible para el equipo y usuarios.
-
----
-
-## Ejercicio 5 — Revert (deshacer un merge)
-
-**Objetivo:** Simular un merge que introduce un bug crítico en producción y deshacerlo con `git revert`.
-
-**Escenario:** Un compañero mergea una feature que rompe la página (el CSS oculta todo el contenido). Hay que deshacer el cambio rápido sin perder el historial.
-
----
-
-### ¿Por qué `revert` y no `reset`?
-
-| Comando | Efecto | Cuándo usarlo |
-|---------|--------|---------------|
-| `git reset --hard <commit>` | Borra commits del historial | Solo en ramas **locales** sin compartir |
-| `git revert <commit>` | Crea un nuevo commit que deshace los cambios | En ramas **compartidas** como `main` |
-
-`reset` reescribe la historia (peligroso si otros ya tienen ese commit). `revert` es seguro: añade un commit nuevo que invierte los cambios, manteniendo el registro de qué pasó.
-
-### Revertir un merge commit
-
-Cuando un merge tiene 2 padres (main + feature), hay que decirle a git qué lado mantener:
-
-```
-Antes del merge:   A---B---C (main)
-                        \---D (feature/x)
-Merge commit:       A---B---C---E (main, merge de feature/x)
-                                |\
-                                D 
-Revert (-m 1):      A---B---C---E---~E (main, deshecho)
+```bash
+git add -A
+git commit -m "chore: prepare release v1.0.0"
+git push -u origin release/v1.0.0
 ```
 
-`git revert -m 1 <merge-commit>` significa:
-- `-m 1` → "quédate con el primer padre (main)" → descarta los cambios de la feature
+**PR en GitHub:**
+- Title: `release v1.0.0`
+- Base: `main` ← compare: `release/v1.0.0`
+- Review → Approved ✅
+- Merge Pull Request
 
----
-
-### Ramas creadas
-
-| Rama | Contenido | Acción |
-|------|-----------|--------|
-| `feature/buggy-widget` | Añade `body { display: none; }` en CSS | Merge a main (bug!) |
-| `hotfix/revert-buggy` | Revierte el merge anterior | Restaura la página |
-
-### Pasos
-
-#### Fase 1 — Crear el bug
+**Post-merge (local):**
 
 ```bash
 git checkout main && git pull origin main
-git checkout -b feature/buggy-widget
+git tag v1.0.0
+git push origin v1.0.0
+git branch -d release/v1.0.0
+git push origin --delete release/v1.0.0
 ```
 
-Añadir al final de `src/css/style.css`:
-
-```css
-/* 🔴 BUG: esto oculta toda la página */
-body {
-  display: none !important;
-}
-```
-
-```bash
-git add -A && git commit -m "feat: add widget section"
-git push -u origin feature/buggy-widget
-```
-
-**PR en GitHub:** Title `feat: add widget section`, base `main` ← `feature/buggy-widget`
-→ Approve → Merge
-
-Después del merge, actualiza local:
-
-```bash
-git checkout main && git pull origin main
-```
-
-#### Fase 2 — Revertir el bug
-
-```bash
-git checkout -b hotfix/revert-buggy
-```
-
-Buscar el hash del merge commit:
-
-```bash
-git log --oneline -5
-```
-
-Sale algo como:
-
-```
-a1b2c3d (HEAD -> main) Merge pull request #5 from fblascon/feature/buggy-widget
-e4f5g6h chore: prepare release v1.0.0
-...
-```
-
-Revertir usando el hash del merge commit:
-
-```bash
-git revert -m 1 a1b2c3d -m "hotfix: revert buggy widget merge"
-```
-
-Esto crea un nuevo commit que deshace todo el diff de `feature/buggy-widget`, dejando `main` como estaba antes del merge.
-
-```bash
-git push -u origin hotfix/revert-buggy
-```
-
-**PR en GitHub:** Title `hotfix: revert buggy widget`, base `main` ← `hotfix/revert-buggy`
-→ Approve → Merge
-
-#### Fase 3 — Limpieza
-
-```bash
-git checkout main && git pull origin main
-git branch -d feature/buggy-widget
-git branch -d hotfix/revert-buggy
-git push origin --delete feature/buggy-widget
-git push origin --delete hotfix/revert-buggy
-```
-
----
-
-### Verificación
-
-Abre `src/css/style.css` y confirma que el `display: none` ya no está. El historial de git muestra:
-
-```
-a1b2c3d Merge feature/buggy-widget (bug)
-f6g7h8i Revert "feat: add widget section" (fix)
-```
-
-El commit del bug **no se borró** — quedó registrado, pero su efecto está deshecho.
+**En GitHub:** Ir a Releases → Create a new release → elegir tag `v1.0.0` → escribir notas → Publish release.
 
 ---
 
@@ -446,5 +269,3 @@ El commit del bug **no se borró** — quedó registrado, pero su efecto está d
 - `git push origin --delete <rama>` borra la rama remota.
 - `git tag -a v1.0.0 -m "mensaje"` crea un tag **anotado** (con metadata). Preferible al lightweight.
 - GitHub no permite aprobar tu propio PR con branch protection activa.
-- `git revert -m 1` es específico para merge commits (2 padres). Para commits normales, basta `git revert <hash>`.
-- Si más adelante quieres mergear de nuevo la feature revertida, primero hay que revertir el revert (git no permite mergear cambios que ya están en el historial).
