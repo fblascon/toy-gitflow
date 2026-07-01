@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.0.1 (2026-07-01)
+
+### Fixed
+- Atributos faltantes en formulario de contacto (action, method, name, required)
+
 ## v1.0.0 (2026-07-01)
 
 ### Added
