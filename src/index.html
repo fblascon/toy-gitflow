@@ -32,10 +32,10 @@
 
     <section id="contact">
       <h2>Contacto</h2>
-      <form id="contact-form">
-        <input type="text" placeholder="Nombre" />
-        <input type="email" placeholder="Email" />
-        <textarea placeholder="Mensaje"></textarea>
+      <form id="contact-form" action="#" method="POST">
+        <input type="text" name="name" placeholder="Nombre" required />
+        <input type="email" name="email" placeholder="Email" required />
+        <textarea name="message" placeholder="Mensaje" required></textarea>
         <button type="submit">Enviar</button>
       </form>
     </section>
