@@ -63,7 +63,83 @@ Configurada en GitHub repo → Settings → Branches → Add classic branch prot
 
 ---
 
-## Ejercicio 2 — [próximo]
+## Ejercicio 2 — Conflicto
+
+**Objetivo:** Dos devs modifican la misma línea → conflicto al mergear.
+
+### Ramas creadas
+
+| Rama | Dev | Cambios |
+|------|-----|---------|
+| `feature/navbar` | fblascon | `<p>Navegación principal</p>` + `<nav>` |
+| `feature/hero` | opencode-bot | `<p>Héroe principal</p>` + `<div id="hero-banner">` |
+
+### Secuencia
+
+1. `feature/navbar` mergeada a `main` sin conflicto (PR #2)
+2. `feature/hero` → PR #3 — conflicto al tocar misma línea del `<header>`
+
+### Resolución
+
+Se usó el editor web de GitHub ("Resolve conflicts") para combinar ambos cambios.
+
+### Resultado
+
+PR #3 mergeado exitosamente ✅
+
+---
+
+## Ejercicio 4 — Release Branch (v1.0.0)
+
+**Objetivo:** Preparar una release oficial con bump de versión, CHANGELOG y tag.
+
+**Rama:** `release/v1.0.0`
+
+### Pasos ejecutados
+
+```bash
+git checkout main && git pull origin main
+git checkout -b release/v1.0.0
+# crear CHANGELOG.md
+git add -A && git commit -m "chore: prepare release v1.0.0"
+git push -u origin release/v1.0.0
+# PR → Approve → Merge
+git checkout main && git pull origin main
+git tag v1.0.0 && git push origin v1.0.0
+git branch -d release/v1.0.0 && git push origin --delete release/v1.0.0
+```
+
+---
+
+## Ejercicio 3 — Hotfix (v1.0.1)
+
+**Objetivo:** Parche urgente para formulario de contacto.
+
+**Rama:** `hotfix/contact-form`
+
+### Pasos ejecutados
+
+```bash
+git checkout main && git pull origin main
+git checkout -b hotfix/contact-form
+# añadir action, method, name, required al form
+git add -A && git commit -m "hotfix: add missing form attributes"
+git push -u origin hotfix/contact-form
+# PR → Approve → Merge
+git checkout main && git pull origin main
+git tag v1.0.1 && git push origin v1.0.1
+git branch -d hotfix/contact-form && git push origin --delete hotfix/contact-form
+```
+
+---
+
+## Pendientes
+
+- **Ejercicio 5 — Revert** (`feature/buggy-widget` + `hotfix/revert-buggy`) — en progreso
+- **Ejercicio 6 — Cherry-pick** (`fix/seo-description` + `feature/analytics` + `fix/footer-text`)
+- **Squash & Merge**
+- **Rebase interactivo**
+- **GitHub Actions**
 
 ---
 
